@@ -114,6 +114,81 @@ def get_health_data():
 def get_health_summary():
     """Get aggregated health data summary"""
     user = current_user
+
+    days = int(request.args.get('days', 7))
+    start_date = datetime.utcnow().date() - timedelta(days=days)
+
+    health_data = HealthData.query.filter(
+        HealthData.user_id == user.id,
+        HealthData.date >= start_date
+    ).all()
+
+    return jsonify([data.to_dict() for data in health_data])
+
+@health_bp.route('/data-summary', methods=['GET'])
+@login_required
+def get_data_summary():
+    """Get comprehensive data summary for current user"""
+    user = current_user
+    summary = HealthData.get_user_data_summary(user.id)
+    return jsonify(summary)
+
+@health_bp.route('/export', methods=['GET'])
+@login_required
+def export_user_data():
+    """Export all user health data as JSON"""
+    user = current_user
+
+    # Get all health data for user
+    health_data = HealthData.query.filter_by(user_id=user.id).order_by(
+        HealthData.date.desc(), HealthData.created_at.desc()
+    ).all()
+
+    # Get all blood tests for user
+    blood_tests = []
+    try:
+        from models import BloodTest, BloodMarker
+        blood_tests_data = BloodTest.query.filter_by(user_id=user.id).order_by(
+            BloodTest.test_date.desc()
+        ).all()
+
+        for test in blood_tests_data:
+            markers = BloodMarker.query.filter_by(blood_test_id=test.id).all()
+            blood_tests.append({
+                'test': test.to_dict(),
+                'markers': [marker.to_dict() for marker in markers]
+            })
+    except:
+        pass  # Blood test tables might not exist yet
+
+    # Get integrations
+    integrations = []
+    try:
+        from models import Integration
+        integrations = Integration.query.filter_by(user_id=user.id).all()
+        integrations = [i.to_dict() for i in integrations]
+    except:
+        pass
+
+    export_data = {
+        'export_date': datetime.utcnow().isoformat(),
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'name': user.name,
+            'created_at': user.created_at.isoformat() if user.created_at else None
+        },
+        'health_data': [data.to_dict() for data in health_data],
+        'blood_tests': blood_tests,
+        'integrations': integrations,
+        'data_summary': HealthData.get_user_data_summary(user.id)
+    }
+
+    return jsonify(export_data)
+@login_required
+def get_health_summary():
+    """Get aggregated health data summary"""
+    user = current_user
     
     days = int(request.args.get('days', 7))
     start_date = datetime.utcnow().date() - timedelta(days=days)

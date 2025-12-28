@@ -281,18 +281,27 @@ class OuraService:
         return synced_data
     
     def _save_health_data(self, user_id, data_type, date, value, unit):
-        """Save or update health data"""
+        """Save or update health data - PRESERVES ALL HISTORICAL DATA"""
+        # Data Retention Policy: Never delete historical health data
+        # Each data point represents a unique measurement at a specific time
+        # Updates are allowed for the same date/type/provider combination
+
         existing = HealthData.query.filter_by(
             user_id=user_id,
             provider='oura',
             data_type=data_type,
             date=date
         ).first()
-        
+
         if existing:
+            # Update existing record (same date/type/provider)
+            old_value = existing.value
             existing.value = value
             existing.unit = unit
+            existing.updated_at = datetime.utcnow()
+            print(f"Updated Oura data: {data_type} for {date} - {old_value} → {value}")
         else:
+            # Create new record (preserves all historical data)
             health_data = HealthData(
                 user_id=user_id,
                 provider='oura',
@@ -302,6 +311,12 @@ class OuraService:
                 unit=unit
             )
             db.session.add(health_data)
-        
-        db.session.commit()
+            print(f"Saved new Oura data: {data_type} for {date} - {value} {unit}")
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            print(f"Error saving health data: {e}")
+            db.session.rollback()
+            raise
 

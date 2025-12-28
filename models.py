@@ -61,37 +61,97 @@ class Integration(db.Model):
 
 
 class HealthData(db.Model):
+    """
+    Health Data Model - PRESERVES ALL HISTORICAL USER DATA
+
+    Data Retention Policy:
+    - All health data is permanently stored per user
+    - Data is never automatically deleted
+    - Each record represents a unique measurement
+    - Updates only occur for same date/type/provider combinations
+    - Historical trends are always available for analysis
+    """
     __tablename__ = 'health_data'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    provider = db.Column(db.String(50), nullable=False)
-    data_type = db.Column(db.String(100), nullable=False)  # steps, heart_rate, sleep, activity, etc.
+    provider = db.Column(db.String(50), nullable=False)  # oura, fitbit, clue, future sources
+    data_type = db.Column(db.String(100), nullable=False)  # steps, heart_rate, sleep, temperature, etc.
     date = db.Column(db.Date, nullable=False)
     value = db.Column(db.Float)
-    unit = db.Column(db.String(50))
-    extra_data = db.Column(db.JSON)  # Additional data specific to provider
+    unit = db.Column(db.String(50))  # steps, bpm, hours, °C, %, etc.
+    extra_data = db.Column(db.JSON)  # Additional provider-specific metadata
+    source_version = db.Column(db.String(50))  # API version or data source version
+    data_quality = db.Column(db.String(20))  # high, medium, low confidence in data
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     # Relationships
     user = db.relationship('User', back_populates='health_data')
-    
-    # Indexes for faster queries
+
+    # Indexes for optimal query performance
     __table_args__ = (
         db.Index('idx_user_date', 'user_id', 'date'),
         db.Index('idx_user_type_date', 'user_id', 'data_type', 'date'),
+        db.Index('idx_user_provider', 'user_id', 'provider'),
+        db.Index('idx_user_provider_date', 'user_id', 'provider', 'date'),
+        db.Index('idx_user_provider_type', 'user_id', 'provider', 'data_type'),
+        # Unique constraint prevents duplicate entries for same user/date/type/provider
+        db.UniqueConstraint('user_id', 'provider', 'data_type', 'date', name='unique_user_provider_type_date'),
     )
     
     def to_dict(self):
         return {
             'id': self.id,
+            'user_id': self.user_id,
             'provider': self.provider,
             'data_type': self.data_type,
             'date': self.date.isoformat() if self.date else None,
             'value': self.value,
             'unit': self.unit,
             'extra_data': self.extra_data,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if hasattr(self, 'updated_at') and self.updated_at else None
+        }
+
+    @staticmethod
+    def get_user_data_summary(user_id):
+        """Get comprehensive data summary for a user"""
+        from sqlalchemy import func
+
+        # Count records by provider and type
+        provider_counts = db.session.query(
+            HealthData.provider,
+            HealthData.data_type,
+            func.count(HealthData.id).label('count'),
+            func.min(HealthData.date).label('earliest_date'),
+            func.max(HealthData.date).label('latest_date')
+        ).filter_by(user_id=user_id).group_by(
+            HealthData.provider, HealthData.data_type
+        ).all()
+
+        # Get date range for user's data
+        date_range = db.session.query(
+            func.min(HealthData.date).label('first_date'),
+            func.max(HealthData.date).label('last_date'),
+            func.count(HealthData.id).label('total_records')
+        ).filter_by(user_id=user_id).first()
+
+        return {
+            'total_records': date_range.total_records if date_range else 0,
+            'date_range': {
+                'first_date': date_range.first_date.isoformat() if date_range and date_range.first_date else None,
+                'last_date': date_range.last_date.isoformat() if date_range and date_range.last_date else None,
+            },
+            'providers': [{
+                'provider': p.provider,
+                'data_type': p.data_type,
+                'record_count': p.count,
+                'date_range': {
+                    'earliest': p.earliest_date.isoformat() if p.earliest_date else None,
+                    'latest': p.latest_date.isoformat() if p.latest_date else None,
+                }
+            } for p in provider_counts]
         }
 
 
