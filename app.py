@@ -78,7 +78,29 @@ def create_app():
     # Health check endpoint
     @app.route('/api/health-check')
     def health_check():
-        return jsonify({'status': 'healthy', 'message': 'Health Tracker API is running'})
+        try:
+            # Test database connection
+            db.engine.execute('SELECT 1')
+            db_status = 'connected'
+        except Exception as e:
+            db_status = f'disconnected: {str(e)}'
+
+        return jsonify({
+            'status': 'healthy',
+            'message': 'Health Tracker API is running',
+            'database': db_status,
+            'environment': os.getenv('FLASK_ENV', 'production')
+        })
+
+    # Database initialization endpoint
+    @app.route('/api/init-db')
+    def init_db():
+        try:
+            with app.app_context():
+                db.create_all()
+            return jsonify({'status': 'success', 'message': 'Database initialized'})
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
     
     # Make oauth available to routes
     app.oauth = oauth
@@ -87,12 +109,8 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    
-    # Create tables if they don't exist
-    with app.app_context():
-        db.create_all()
-    
+
     port = int(os.getenv('PORT', 5007))
     # Run in production-like mode (no auto-restart on file changes)
-    app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
