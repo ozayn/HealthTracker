@@ -3,12 +3,7 @@
 
 echo "🚀 Starting Health Tracker..."
 
-# Start the application directly with Python for testing
+# Start the application
 PORT=${PORT:-8080}
-echo "🌐 Starting with Python on port $PORT..."
-exec python3 -c "
-import os
-os.environ['PORT'] = '$PORT'
-from app import app
-app.run(host='0.0.0.0', port=int('$PORT'), debug=False)
-"
+echo "🌐 Starting with Python main.py on port $PORT..."
+exec python3 main.py
