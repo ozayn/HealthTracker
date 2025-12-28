@@ -108,8 +108,15 @@ def create_app():
 
     return app
 
+# Create app instance for gunicorn
+app = create_app()
+
+# Only create tables when running directly (not when imported by gunicorn)
 if __name__ == '__main__':
-    app = create_app()
+    with app.app_context():
+        from models import db
+        db.create_all()
+        print("Database tables created")
 
     port = int(os.getenv('PORT', 5007))
     # Run in production-like mode (no auto-restart on file changes)

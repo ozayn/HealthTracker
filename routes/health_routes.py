@@ -54,9 +54,14 @@ def sync_health_data():
         print(f"Oura access token exists: {bool(oura_integration.access_token)}")
         oura_service = OuraService()
         try:
-            results['oura'] = oura_service.sync_data(user.id, oura_integration, days)
+            if sync_type == 'recent':
+                # Sync only recent data (last 24 hours)
+                results['oura'] = oura_service.sync_recent_data(user.id, oura_integration, hours=24)
+            else:
+                # Full sync (specified number of days)
+                results['oura'] = oura_service.sync_data(user.id, oura_integration, days)
             oura_integration.last_sync = datetime.utcnow()
-            print(f"Oura sync results: {results['oura']}")
+            print(f"Oura {sync_type} sync results: {results['oura']}")
         except Exception as e:
             print(f"Oura sync error: {str(e)}")
             results['oura'] = {'error': str(e)}
@@ -285,7 +290,8 @@ def test_sync_health_data():
 
     data = request.get_json() or {}
     days = data.get('days', 7)  # Default to last 7 days for testing
-    print(f"Syncing last {days} days")
+    sync_type = data.get('type', 'recent')  # Default to recent for testing
+    print(f"Syncing last {days} days (type: {sync_type})")
 
     results = {
         'fitbit': None,

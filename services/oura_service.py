@@ -204,11 +204,31 @@ class OuraService:
                         if sedentary_hours is not None:
                             self._save_health_data(user_id, 'sedentary_time', date, sedentary_hours, 'hours')
 
-                    # MET minutes
+                    # MET minutes - handle both simple values and complex objects
                     if 'met' in activity:
-                        met_minutes = activity['met']
-                        if met_minutes is not None:
-                            self._save_health_data(user_id, 'met_minutes', date, met_minutes, 'minutes')
+                        met_data = activity['met']
+                        print(f"MET data for {date}: {type(met_data)} - {met_data}")
+                        if met_data is not None:
+                            # Handle complex MET data structure
+                            if isinstance(met_data, dict):
+                                print(f"Complex MET data structure detected")
+                                # If it's a dict with 'items', sum them up
+                                if 'items' in met_data and isinstance(met_data['items'], list):
+                                    total_met = sum(float(item) for item in met_data['items'] if isinstance(item, (int, float)))
+                                    print(f"Summed MET items: {total_met}")
+                                    self._save_health_data(user_id, 'met_minutes', date, total_met, 'minutes')
+                                else:
+                                    print(f"Complex MET data but no 'items' field: {met_data.keys()}")
+                                # Otherwise, skip complex data we can't handle
+                            else:
+                                # Simple numeric value
+                                try:
+                                    met_value = float(met_data)
+                                    print(f"Simple MET value: {met_value}")
+                                    self._save_health_data(user_id, 'met_minutes', date, met_value, 'minutes')
+                                except (ValueError, TypeError) as e:
+                                    print(f"Invalid MET data: {met_data} - {e}")
+                                    pass  # Skip invalid data
 
                     # Activity time breakdown
                     if 'low_activity_time' in activity:
@@ -269,26 +289,40 @@ class OuraService:
 
             # Sync body signals data (temperature, etc.)
             try:
+                print(f"Fetching body signals data from {start_date} to {end_date}")
                 body_signals_data = self.get_body_signals_data(access_token, start_date, end_date)
+                print(f"Body signals API response: {type(body_signals_data)}")
+
                 if 'data' in body_signals_data:
+                    print(f"Found {len(body_signals_data['data'])} body signals records")
                     for signals in body_signals_data['data']:
+                        print(f"Processing body signals for date: {signals.get('day')}")
                         date = datetime.fromisoformat(signals['day']).date()
 
                         # Body temperature (if not already captured in readiness)
                         if 'body_temperature' in signals:
                             temp = signals['body_temperature']
+                            print(f"Found body temperature: {temp}")
                             if temp and temp > 30:  # Valid temperature range check
                                 self._save_health_data(user_id, 'body_temperature', date, temp, '°C')
+                                print(f"Saved body temperature: {temp}°C for {date}")
+                        else:
+                            print("No body_temperature field in signals data")
 
                         # Temperature deviation
                         if 'temperature_deviation' in signals:
                             temp_dev = signals['temperature_deviation']
+                            print(f"Found temperature deviation: {temp_dev}")
                             if temp_dev is not None:
                                 self._save_health_data(user_id, 'temperature_deviation', date, temp_dev, '°C')
 
                         synced_data['body_signals'] += 1
+                else:
+                    print(f"No 'data' key in body signals response. Keys: {body_signals_data.keys() if isinstance(body_signals_data, dict) else 'Not a dict'}")
             except Exception as e:
                 print(f"Body signals sync failed: {e}")
+                import traceback
+                traceback.print_exc()
                 # Continue with other data even if body signals fails
         
         except Exception as e:

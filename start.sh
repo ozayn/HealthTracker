@@ -7,10 +7,20 @@ echo "🚀 Starting Health Tracker..."
 echo "⏳ Waiting for database to be ready..."
 sleep 10
 
-# Initialize database
+# Initialize database (without curl since it's not available on Railway)
 echo "🗄️  Initializing database..."
-curl -f http://localhost:$PORT/api/init-db || echo "Database init failed, continuing..."
+python3 -c "
+import sys
+sys.path.append('.')
+from app import create_app
+app = create_app()
+with app.app_context():
+    from models import db
+    db.create_all()
+    print('Database initialized successfully')
+" || echo "Database init failed, continuing..."
 
 # Start the application
-echo "🌐 Starting Gunicorn server..."
+PORT=${PORT:-8080}  # Use PORT env var or default to 8080 for Railway
+echo "🌐 Starting Gunicorn server on port $PORT..."
 exec gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 30
