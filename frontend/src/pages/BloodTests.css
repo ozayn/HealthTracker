@@ -1,0 +1,179 @@
+.blood-tests-page {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.blood-tests-layout {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 1.5rem;
+}
+
+.tests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.test-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.test-card:hover {
+  border-color: #ff9966;
+}
+
+.test-card.selected {
+  border-color: #ff7744;
+  box-shadow: 0 4px 16px rgba(255, 119, 68, 0.2);
+}
+
+.test-date {
+  font-weight: 600;
+  color: #2a2a2a;
+  margin-bottom: 0.5rem;
+}
+
+.test-lab {
+  color: #6c757d;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+.test-markers-count {
+  font-size: 0.85rem;
+  color: #ff7744;
+  font-weight: 500;
+}
+
+.test-details {
+  min-height: 400px;
+}
+
+.test-info {
+  margin-bottom: 2rem;
+}
+
+.info-row {
+  display: flex;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #4a4a4a;
+  min-width: 100px;
+}
+
+.markers-section h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2a2a2a;
+  margin-bottom: 1rem;
+}
+
+.markers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.marker-item {
+  padding: 1rem;
+  background: #fafafa;
+  border-radius: 8px;
+  border-left: 4px solid #ff7744;
+}
+
+.marker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.marker-name {
+  font-weight: 600;
+  color: #2a2a2a;
+  font-size: 1.05rem;
+}
+
+.marker-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ff7744;
+  margin-bottom: 0.5rem;
+}
+
+.marker-range {
+  font-size: 0.9rem;
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+.marker-notes {
+  font-size: 0.9rem;
+  color: #4a4a4a;
+  font-style: italic;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2a2a2a;
+  margin-bottom: 1.5rem;
+}
+
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+.modal-actions button {
+  padding: 0.75rem 1.5rem;
+}
+
+@media (max-width: 968px) {
+  .blood-tests-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .test-details {
+    min-height: auto;
+  }
+}
+

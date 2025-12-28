@@ -1,0 +1,106 @@
+.integrations-page {
+  animation: fadeIn 0.5s ease-in;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.page-header h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #2a2a2a;
+  margin-bottom: 0.5rem;
+}
+
+.providers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.provider-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.provider-icon-large {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.8rem;
+}
+
+.provider-info h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #2a2a2a;
+}
+
+.provider-sync {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+}
+
+.provider-status {
+  margin-bottom: 1rem;
+}
+
+.provider-description {
+  color: #6c757d;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  flex: 1;
+}
+
+.provider-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.provider-actions button {
+  flex: 1;
+}
+
+.instructions {
+  color: #4a4a4a;
+  line-height: 1.8;
+}
+
+.instructions ol {
+  margin-left: 1.5rem;
+}
+
+.instructions li {
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .providers-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
