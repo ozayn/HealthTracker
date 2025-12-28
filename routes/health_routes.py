@@ -275,9 +275,15 @@ def get_health_summary():
     
     return jsonify(summary)
 
+@health_bp.route('/debug', methods=['GET'])
+def debug_endpoint():
+    return jsonify({'message': 'Debug endpoint working'})
+
 @health_bp.route('/test-sync', methods=['POST'])
 def test_sync_health_data():
     """Test sync health data - temporary endpoint for debugging"""
+    with open('/tmp/debug.log', 'a') as f:
+        f.write("=== TEST SYNC START ===\n")
     print("=== TEST SYNC START ===")
 
     # For testing, assume user ID 2 (from database check)
@@ -310,12 +316,16 @@ def test_sync_health_data():
         print("Oura integration found")
         print(f"Oura access token exists: {bool(oura_integration.access_token)}")
         oura_service = OuraService()
+        print("Created OuraService instance")
         try:
+            print(f"About to call sync method for user {user.id}")
             if sync_type == 'recent':
                 # Sync only recent data (last 24 hours)
+                print("Calling sync_recent_data")
                 results['oura'] = oura_service.sync_recent_data(user.id, oura_integration, hours=24)
             else:
-                # Full sync (specified number of days)
+                # Full sync (specified number of days) - let's do this to get all temperature data
+                print(f"Doing FULL sync for {days} days to get all temperature data")
                 results['oura'] = oura_service.sync_data(user.id, oura_integration, days)
             oura_integration.last_sync = datetime.utcnow()
             db.session.commit()

@@ -95,10 +95,33 @@ class OuraService:
             'end_date': end_date.strftime('%Y-%m-%d')
         }
 
-        url = f'{self.BASE_URL}/v2/usercollection/daily_body_signals'
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
+        # Try multiple possible endpoints for temperature data
+        possible_endpoints = [
+            'daily_temperature',  # Primary temperature endpoint
+            'daily_body_signals', # Alternative body signals endpoint
+            'body_signals'         # Another possible name
+        ]
 
+        for endpoint in possible_endpoints:
+            url = f'{self.BASE_URL}/v2/usercollection/{endpoint}'
+            print(f"Trying temperature endpoint: {endpoint}")
+            response = requests.get(url, headers=headers, params=params)
+            if response.status_code == 200:
+                print(f"Successfully found temperature data at endpoint: {endpoint}")
+                break
+            elif response.status_code == 404:
+                print(f"Endpoint {endpoint} not found (404)")
+                continue
+            else:
+                print(f"Endpoint {endpoint} returned status {response.status_code}")
+                continue
+        else:
+            # If no endpoint works, return empty data
+            print("No temperature endpoints available")
+            return {'data': []}
+
+        # If we found a working endpoint, return the response
+        response.raise_for_status()
         return response.json()
     
     def sync_data(self, user_id, integration, days=30):
@@ -107,19 +130,37 @@ class OuraService:
 
     def sync_recent_data(self, user_id, integration, hours=24):
         """Sync only recent Oura data (last N hours) - for real-time updates"""
+        print(f"sync_recent_data called: user_id={user_id}, hours={hours}")
         days = max(1, hours / 24)  # Convert hours to days, minimum 1 day
+        print(f"Calling _sync_data_range with days={days}")
         return self._sync_data_range(user_id, integration, days, is_recent_sync=True)
 
     def _sync_data_range(self, user_id, integration, days, is_recent_sync=False):
         """Sync Oura data for the specified number of days"""
+        print(f"DEBUG: _sync_data_range called with integration={integration}, user_id={user_id}")
+        if integration is None:
+            print("ERROR: integration is None")
+            return {'sleep': 0, 'activity': 0, 'readiness': 0, 'body_signals': 0}
+
         access_token = integration.access_token
+        print(f"DEBUG: Got access token: {access_token[:10]}...")
+
+        with open('/tmp/debug.log', 'a') as f:
+            f.write("About to calculate dates\n")
+        end_date = datetime.utcnow().date()
+        start_date = end_date - timedelta(days=days)
+
+        sync_type = "RECENT" if is_recent_sync else "FULL"
+        with open('/tmp/debug.log', 'a') as f:
+            f.write(f"Dates calculated: {start_date} to {end_date}, sync_type: {sync_type}\n")
 
         end_date = datetime.utcnow().date()
         start_date = end_date - timedelta(days=days)
 
         sync_type = "RECENT" if is_recent_sync else "FULL"
-        print(f"=== OURA {sync_type} SYNC START ===")
-        print(f"User {user_id}: Syncing {days} days from {start_date} to {end_date}")
+        with open('/tmp/sync_debug.log', 'a') as f:
+            f.write(f"=== OURA {sync_type} SYNC START ===\n")
+            f.write(f"User {user_id}: Syncing {days} days from {start_date} to {end_date}\n")
 
         synced_data = {
             'sleep': 0,
@@ -255,43 +296,125 @@ class OuraService:
                     synced_data['activity'] += 1
             
             # Sync readiness data
-            readiness_data = self.get_readiness_data(access_token, start_date, end_date)
-            if 'data' in readiness_data:
-                for readiness in readiness_data['data']:
-                    date = datetime.fromisoformat(readiness['day']).date()
+            try:
+                with open('/tmp/debug.log', 'a') as f:
+                    f.write("About to call get_readiness_data\n")
+                print("About to call get_readiness_data")
+                readiness_data = self.get_readiness_data(access_token, start_date, end_date)
+                import sys
+                print(f"Readiness API response keys: {readiness_data.keys() if isinstance(readiness_data, dict) else 'Not dict'}", file=sys.stderr)
+                if 'data' in readiness_data and readiness_data['data']:
+                    print(f"Sample readiness record keys: {readiness_data['data'][0].keys()}", file=sys.stderr)
+                    print(f"Sample readiness record: {readiness_data['data'][0]}", file=sys.stderr)
+                if 'data' in readiness_data:
+                    print(f"Found {len(readiness_data['data'])} readiness records", file=sys.stderr)
+                    if len(readiness_data['data']) == 0:
+                        print("No readiness records to process", file=sys.stderr)
+                    for i, readiness in enumerate(readiness_data['data']):
+                        print(f"DEBUG: Processing readiness record {i}", file=sys.stderr)
+                        with open('/tmp/sync_debug.log', 'a') as f:
+                            f.write(f"Processing readiness record {i}\n")
+                        try:
+                            if 'day' not in readiness:
+                                with open('/tmp/sync_debug.log', 'a') as f:
+                                    f.write(f"Readiness record {i} missing 'day' field: {readiness}\n")
+                                continue
+                            date = datetime.fromisoformat(readiness['day']).date()
+                            with open('/tmp/sync_debug.log', 'a') as f:
+                                f.write(f"Processing readiness record for date: {date}\n")
+                                f.write(f"Readiness record has keys: {list(readiness.keys())}\n")
+                        except Exception as e:
+                            with open('/tmp/sync_debug.log', 'a') as f:
+                                f.write(f"Error parsing date from readiness record: {e}\n")
+                                f.write(f"Readiness record: {readiness}\n")
+                            continue
 
-                    # Readiness score
-                    if 'score' in readiness:
-                        self._save_health_data(user_id, 'readiness_score', date, readiness['score'], 'score')
+                        with open('/tmp/sync_debug.log', 'a') as f:
+                            f.write("About to process readiness_score\n")
 
-                    # Resting heart rate
-                    if 'resting_heart_rate' in readiness:
-                        self._save_health_data(user_id, 'resting_heart_rate', date,
-                                             readiness['resting_heart_rate'], 'bpm')
+                        # Readiness score
+                        if 'score' in readiness:
+                            print(f"Processing readiness_score: {readiness['score']}", file=sys.stderr)
+                            self._save_health_data(user_id, 'readiness_score', date, readiness['score'], 'score')
 
-                    # HRV
-                    if 'hrv_balance' in readiness:
-                        self._save_health_data(user_id, 'hrv', date, readiness['hrv_balance'], 'ms')
+                        # Resting heart rate
+                        if 'resting_heart_rate' in readiness:
+                            with open('/tmp/sync_debug.log', 'a') as f:
+                                f.write(f"Processing resting_heart_rate: {readiness['resting_heart_rate']}\n")
+                            self._save_health_data(user_id, 'resting_heart_rate', date,
+                                                 readiness['resting_heart_rate'], 'bpm')
 
-                    # Previous day activity score
-                    if 'previous_day_activity' in readiness:
-                        prev_activity = readiness['previous_day_activity']
-                        if prev_activity is not None:
-                            self._save_health_data(user_id, 'previous_day_activity', date, prev_activity, 'score')
+                        # HRV
+                        if 'hrv_balance' in readiness:
+                            self._save_health_data(user_id, 'hrv', date, readiness['hrv_balance'], 'ms')
 
-                    # Previous night sleep score
-                    if 'previous_night_sleep' in readiness:
-                        prev_sleep = readiness['previous_night_sleep']
-                        if prev_sleep is not None:
-                            self._save_health_data(user_id, 'previous_night_sleep', date, prev_sleep, 'score')
+                        # About to check temperature fields
+                        with open('/tmp/sync_debug.log', 'a') as f:
+                            f.write("About to check temperature fields\n")
 
-                    synced_data['readiness'] += 1
+                    # Temperature deviation (this is the main temperature metric from Oura)
+                    if 'temperature_deviation' in readiness:
+                        temp_dev = readiness['temperature_deviation']
+                        print(f"Found temperature_deviation for {date}: {temp_dev}", file=sys.stderr)
+                        if temp_dev is not None:
+                            self._save_health_data(user_id, 'temperature_deviation', date, temp_dev, '°C')
+                    else:
+                        print(f"No temperature_deviation field for {date}", file=sys.stderr)
+
+                    # Temperature trend deviation
+                    if 'temperature_trend_deviation' in readiness:
+                        temp_trend = readiness['temperature_trend_deviation']
+                        print(f"Found temperature_trend_deviation in readiness: {temp_trend}")
+                        if temp_trend is not None:
+                            self._save_health_data(user_id, 'temperature_trend_deviation', date, temp_trend, '°C')
+
+                    # Body temperature (from readiness)
+                    if 'body_temperature' in readiness:
+                        temp = readiness['body_temperature']
+                        print(f"Found body_temperature in readiness: {temp}")
+                        if temp and temp > 30:  # Valid temperature range check
+                            self._save_health_data(user_id, 'body_temperature', date, temp, '°C')
+
+                    # Check for temperature in other possible field names
+                    temp_fields = ['temperature', 'body_temp', 'core_temperature', 'skin_temperature']
+                    for field in temp_fields:
+                        if field in readiness and readiness[field]:
+                            temp = readiness[field]
+                            print(f"Found temperature in {field}: {temp}")
+                            if isinstance(temp, (int, float)) and temp > 30:  # Valid temperature range check
+                                self._save_health_data(user_id, 'body_temperature', date, temp, '°C')
+                                break
+
+                        # Previous day activity score
+                        if 'previous_day_activity' in readiness:
+                            prev_activity = readiness['previous_day_activity']
+                            if prev_activity is not None:
+                                self._save_health_data(user_id, 'previous_day_activity', date, prev_activity, 'score')
+
+                        # Previous night sleep score
+                        if 'previous_night_sleep' in readiness:
+                            prev_sleep = readiness['previous_night_sleep']
+                            if prev_sleep is not None:
+                                self._save_health_data(user_id, 'previous_night_sleep', date, prev_sleep, 'score')
+
+                        synced_data['readiness'] += 1
+                        print(f"Readiness sync completed. Synced {synced_data['readiness']} records")
+            except Exception as e:
+                print(f"Readiness sync failed: {e}")
+                import traceback
+                traceback.print_exc()
+
+            print("Readiness processing completed, now starting body signals")
+            # About to start body signals sync
+            print("About to start body signals sync")
 
             # Sync body signals data (temperature, etc.)
+            print("=== STARTING BODY SIGNALS SYNC ===")
             try:
                 print(f"Fetching body signals data from {start_date} to {end_date}")
                 body_signals_data = self.get_body_signals_data(access_token, start_date, end_date)
                 print(f"Body signals API response: {type(body_signals_data)}")
+                print(f"Body signals response keys: {body_signals_data.keys() if isinstance(body_signals_data, dict) else 'Not dict'}")
 
                 if 'data' in body_signals_data:
                     print(f"Found {len(body_signals_data['data'])} body signals records")
