@@ -7,11 +7,8 @@ echo "🚀 Starting Railway build process..."
 
 # Install Python dependencies
 echo "📦 Installing Python dependencies..."
-# Skip psycopg2-binary locally if it fails (Railway will handle it)
-pip install -r requirements.txt || {
-    echo "⚠️  Some dependencies failed locally, but Railway should handle them"
-    echo "📝 This is normal for psycopg2-binary on local Python 3.14"
-}
+pip install --upgrade pip
+pip install -r requirements.txt
 
 # Verify frontend build exists (built locally)
 echo "🔍 Checking frontend build..."

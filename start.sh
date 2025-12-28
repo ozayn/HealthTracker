@@ -23,4 +23,5 @@ with app.app_context():
 # Start the application
 PORT=${PORT:-8080}  # Use PORT env var or default to 8080 for Railway
 echo "🌐 Starting Gunicorn server on port $PORT..."
+echo "Using gunicorn command: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 30"
 exec gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 30
