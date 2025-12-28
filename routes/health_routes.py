@@ -119,12 +119,29 @@ def get_health_summary():
     days = int(request.args.get('days', 7))
     start_date = datetime.utcnow().date() - timedelta(days=days)
 
+    # Get all health data for the user in date range
     health_data = HealthData.query.filter(
         HealthData.user_id == user.id,
         HealthData.date >= start_date
-    ).all()
+    ).order_by(HealthData.date.desc()).all()
 
-    return jsonify([data.to_dict() for data in health_data])
+    # Aggregate data by data_type
+    summary = {}
+    for record in health_data:
+        data_type = record.data_type
+        if data_type not in summary:
+            summary[data_type] = {
+                'values': [],
+                'unit': record.unit or '',
+                'latest_value': record.value,
+                'latest_date': record.date.isoformat()
+            }
+        summary[data_type]['values'].append({
+            'date': record.date.isoformat(),
+            'value': record.value
+        })
+
+    return jsonify(summary)
 
 @health_bp.route('/data-summary', methods=['GET'])
 @login_required

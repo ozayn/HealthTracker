@@ -79,8 +79,9 @@ def create_app():
     @app.route('/api/health-check')
     def health_check():
         try:
-            # Test database connection
-            db.engine.execute('SELECT 1')
+            # Test database connection using SQLAlchemy 2.0 syntax
+            with db.engine.connect() as connection:
+                connection.execute(db.text('SELECT 1'))
             db_status = 'connected'
         except Exception as e:
             db_status = f'disconnected: {str(e)}'

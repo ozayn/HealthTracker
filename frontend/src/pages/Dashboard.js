@@ -169,22 +169,29 @@ function Dashboard({ user }) {
             <Link to="/health-data" className="card-link">View All</Link>
           </div>
           <div className="health-metrics">
-            {Object.keys(healthSummary).length === 0 ? (
+            {!healthSummary || Object.keys(healthSummary).length === 0 ? (
               <p className="empty-state">No health data yet</p>
             ) : (
-              Object.entries(healthSummary).slice(0, 4).map(([type, data]) => (
-                <div key={type} className="metric-item">
-                  <div className="metric-label">{type.replace(/_/g, ' ')}</div>
-                  <div className="metric-value">
-                    {data.values.length > 0 && (
-                      <>
-                        {data.values[data.values.length - 1].value.toFixed(1)} 
-                        <span className="metric-unit">{data.unit}</span>
-                      </>
-                    )}
+              Object.entries(healthSummary).slice(0, 4).map(([type, data]) => {
+                if (!data || !data.values || !Array.isArray(data.values)) {
+                  return null; // Skip invalid data
+                }
+                return (
+                  <div key={type} className="metric-item">
+                    <div className="metric-label">{type.replace(/_/g, ' ')}</div>
+                    <div className="metric-value">
+                      {data.values.length > 0 && data.values[data.values.length - 1]?.value !== undefined && (
+                        <>
+                          {typeof data.values[data.values.length - 1].value === 'number'
+                            ? data.values[data.values.length - 1].value.toFixed(1)
+                            : data.values[data.values.length - 1].value}
+                          <span className="metric-unit">{data.unit || ''}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              }).filter(Boolean) // Remove null entries
             )}
           </div>
         </div>
