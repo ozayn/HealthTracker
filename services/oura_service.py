@@ -7,6 +7,10 @@ class OuraService:
     BASE_URL = 'https://api.ouraring.com'
     AUTH_URL = 'https://cloud.ouraring.com/oauth/authorize'
     TOKEN_URL = 'https://api.ouraring.com/oauth/token'
+
+    # Real-time sync configuration
+    DEFAULT_SYNC_DAYS = 30  # How far back to sync initially
+    RECENT_SYNC_HOURS = 24  # How recent data to sync for ongoing updates
     
     def get_authorization_url(self, user_id):
         """Generate Oura OAuth authorization URL"""
@@ -99,11 +103,24 @@ class OuraService:
     
     def sync_data(self, user_id, integration, days=30):
         """Sync Oura data for the specified number of days"""
+        return self._sync_data_range(user_id, integration, days)
+
+    def sync_recent_data(self, user_id, integration, hours=24):
+        """Sync only recent Oura data (last N hours) - for real-time updates"""
+        days = max(1, hours / 24)  # Convert hours to days, minimum 1 day
+        return self._sync_data_range(user_id, integration, days, is_recent_sync=True)
+
+    def _sync_data_range(self, user_id, integration, days, is_recent_sync=False):
+        """Sync Oura data for the specified number of days"""
         access_token = integration.access_token
-        
+
         end_date = datetime.utcnow().date()
         start_date = end_date - timedelta(days=days)
-        
+
+        sync_type = "RECENT" if is_recent_sync else "FULL"
+        print(f"=== OURA {sync_type} SYNC START ===")
+        print(f"User {user_id}: Syncing {days} days from {start_date} to {end_date}")
+
         synced_data = {
             'sleep': 0,
             'activity': 0,

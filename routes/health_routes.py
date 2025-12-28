@@ -13,12 +13,13 @@ health_bp = Blueprint('health', __name__)
 def sync_health_data():
     """Sync health data from all connected providers"""
     user = current_user
-    print(f"=== SYNC START ===")
-    print(f"Starting sync for user {user.id}")
+    print(f"=== FULL SYNC START ===")
+    print(f"Starting full sync for user {user.id}")
 
     data = request.get_json() or {}
     days = data.get('days', 30)  # Default to last 30 days
-    print(f"Syncing last {days} days")
+    sync_type = data.get('type', 'full')  # 'full' or 'recent'
+    print(f"Syncing last {days} days (type: {sync_type})")
 
     results = {
         'fitbit': None,
@@ -132,6 +133,44 @@ def get_data_summary():
     user = current_user
     summary = HealthData.get_user_data_summary(user.id)
     return jsonify(summary)
+
+@health_bp.route('/sync-recent', methods=['POST'])
+@login_required
+def sync_recent_health_data():
+    """Sync only recent health data (last 24 hours) - for real-time updates"""
+    user = current_user
+    print("=== RECENT SYNC START ===")
+    print(f"Starting recent sync for user {user.id}")
+
+    data = request.get_json() or {}
+    hours = data.get('hours', 24)  # Default to last 24 hours
+
+    results = {
+        'fitbit': None,
+        'oura': None,
+        'clue': None
+    }
+
+    # Sync Oura recent data
+    oura_integration = Integration.query.filter_by(
+        user_id=user.id,
+        provider='oura',
+        is_active=True
+    ).first()
+
+    if oura_integration:
+        print(f"Oura integration found, syncing last {hours} hours")
+        oura_service = OuraService()
+        try:
+            results['oura'] = oura_service.sync_recent_data(user.id, oura_integration, hours=hours)
+            oura_integration.last_sync = datetime.utcnow()
+            db.session.commit()
+            print(f"Oura recent sync results: {results['oura']}")
+        except Exception as e:
+            print(f"Oura recent sync error: {str(e)}")
+            results['oura'] = {'error': str(e)}
+
+    return jsonify(results)
 
 @health_bp.route('/export', methods=['GET'])
 @login_required
@@ -249,10 +288,15 @@ def test_sync_health_data():
         print(f"Oura access token exists: {bool(oura_integration.access_token)}")
         oura_service = OuraService()
         try:
-            results['oura'] = oura_service.sync_data(user.id, oura_integration, days)
+            if sync_type == 'recent':
+                # Sync only recent data (last 24 hours)
+                results['oura'] = oura_service.sync_recent_data(user.id, oura_integration, hours=24)
+            else:
+                # Full sync (specified number of days)
+                results['oura'] = oura_service.sync_data(user.id, oura_integration, days)
             oura_integration.last_sync = datetime.utcnow()
             db.session.commit()
-            print(f"Oura sync results: {results['oura']}")
+            print(f"Oura {sync_type} sync results: {results['oura']}")
         except Exception as e:
             print(f"Oura sync error: {str(e)}")
             results['oura'] = {'error': str(e)}

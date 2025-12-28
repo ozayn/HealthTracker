@@ -41,26 +41,52 @@ function Dashboard({ user }) {
   };
 
   const syncHealthData = async () => {
-    console.log('Sync button clicked!');
+    console.log('Full sync button clicked!');
     setSyncing(true);
     try {
-      console.log('Making sync API call...');
+      console.log('Making full sync API call...');
       const response = await apiFetch('/api/health/sync', {
         method: 'POST',
-        body: JSON.stringify({ days: 7 }) // Sync last 7 days
+        body: JSON.stringify({ type: 'full', days: 30 }) // Sync last 30 days
       });
 
       console.log('Sync response status:', response.status);
       const results = await response.json();
-      console.log('Sync results:', results);
+      console.log('Full sync results:', results);
 
       // Reload dashboard data after sync
       await loadDashboardData();
 
-      alert('Health data synced successfully!');
+      alert('Full health data sync completed successfully!');
     } catch (error) {
       console.error('Error syncing health data:', error);
       alert(`Error syncing health data: ${error.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const syncRecentData = async () => {
+    console.log('Recent sync button clicked!');
+    setSyncing(true);
+    try {
+      console.log('Making recent sync API call...');
+      const response = await apiFetch('/api/health/sync-recent', {
+        method: 'POST',
+        body: JSON.stringify({ hours: 24 }) // Sync last 24 hours
+      });
+
+      console.log('Recent sync response status:', response.status);
+      const results = await response.json();
+      console.log('Recent sync results:', results);
+
+      // Reload dashboard data after sync
+      await loadDashboardData();
+
+      alert('Recent health data synced successfully!');
+    } catch (error) {
+      console.error('Error syncing recent health data:', error);
+      alert(`Error syncing recent health data: ${error.message}`);
     } finally {
       setSyncing(false);
     }
@@ -84,14 +110,22 @@ function Dashboard({ user }) {
       <div className="dashboard-header">
         <h2>Dashboard</h2>
         <p className="subtitle">Your health overview</p>
-        <button
-          onClick={syncHealthData}
-          className="btn btn-secondary"
-          disabled={syncing}
-          style={{ marginTop: '1rem' }}
-        >
-          {syncing ? 'Syncing...' : 'Sync Health Data'}
-        </button>
+        <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+          <button
+            onClick={syncHealthData}
+            className="btn btn-secondary"
+            disabled={syncing}
+          >
+            {syncing ? 'Syncing...' : 'Sync All Data (30 days)'}
+          </button>
+          <button
+            onClick={syncRecentData}
+            className="btn btn-outline"
+            disabled={syncing}
+          >
+            {syncing ? 'Syncing...' : 'Sync Recent (24h)'}
+          </button>
+        </div>
       </div>
 
       <div className="dashboard-grid">

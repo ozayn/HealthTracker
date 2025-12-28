@@ -23,5 +23,9 @@ if [ ! -f "frontend/build/index.html" ]; then
     exit 1
 fi
 
+# Make sync scheduler executable
+chmod +x sync_scheduler.py
+echo "✅ Sync scheduler configured!"
+
 echo "✅ Frontend build verified!"
 echo "✅ Build process complete!"
