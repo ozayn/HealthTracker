@@ -9,17 +9,19 @@ echo "🚀 Starting Railway build process..."
 echo "📦 Installing Python dependencies..."
 pip install -r requirements.txt
 
-# Build the React frontend
-echo "⚛️  Building React frontend..."
-cd frontend
-npm install
-npm run build
-cd ..
-
-# Verify frontend build exists
+# Verify frontend build exists (built locally)
+echo "🔍 Checking frontend build..."
 if [ ! -d "frontend/build" ]; then
-    echo "❌ Frontend build failed - build directory not found"
+    echo "❌ Frontend build directory not found. Please build frontend locally first:"
+    echo "   cd frontend && npm install && npm run build"
     exit 1
 fi
 
+# Verify key files exist
+if [ ! -f "frontend/build/index.html" ]; then
+    echo "❌ Frontend index.html not found in build directory"
+    exit 1
+fi
+
+echo "✅ Frontend build verified!"
 echo "✅ Build process complete!"
