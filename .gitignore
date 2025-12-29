@@ -15,7 +15,6 @@ health_tracker.db
 instance/
 .DS_Store
 node_modules/
-frontend/build/
 frontend/node_modules/
 uploads/
 *.log

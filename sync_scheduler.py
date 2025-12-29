@@ -68,3 +68,4 @@ def sync_recent_user_data():
 
 if __name__ == '__main__':
     sync_recent_user_data()
+
