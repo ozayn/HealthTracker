@@ -371,12 +371,129 @@ Contributions are welcome! Please follow these steps:
 
 MIT License - feel free to use this project for personal or commercial purposes.
 
+## Key Technical Insights & Learnings
+
+This project involved several complex integrations and deployment challenges. Here are the key technical insights gained during development:
+
+### 🔐 OAuth Multi-Domain Support
+
+**Challenge**: Supporting OAuth authentication from multiple domains (development, Railway subdomain, custom domain) while maintaining security.
+
+**Solution**: Implemented dynamic redirect URI detection that automatically selects the correct OAuth callback URL based on the request origin:
+
+```python
+# Detect domain from request and choose appropriate redirect URI
+base_url = request.host_url.rstrip('/')
+if 'railway.app' in base_url:
+    redirect_uri = 'https://[railway-subdomain]/api/auth/google/callback'
+elif 'customdomain.com' in base_url:
+    redirect_uri = 'https://customdomain.com/api/auth/google/callback'
+```
+
+**Key Benefits**:
+- Seamless authentication from any domain
+- No manual environment variable management
+- Maintains OAuth security requirements
+
+### 🚀 Railway Deployment Challenges
+
+**Static File Serving Issues**:
+- **Problem**: JavaScript files returning HTML instead of JS content
+- **Root Cause**: Frontend build files not committed to Git repository
+- **Solution**: Added `frontend/build/` directory to version control and implemented robust static file path resolution
+
+**Database Configuration**:
+- **Challenge**: Automatic PostgreSQL setup vs manual SQLite configuration
+- **Solution**: Environment-aware database URI handling with proper PostgreSQL connection string formatting
+
+**Port Management**:
+- **Issue**: Railway's dynamic port assignment causing routing conflicts
+- **Solution**: Proper PORT environment variable handling with fallback defaults
+
+### 🌐 Custom Domain Setup
+
+**DNS & SSL Propagation**:
+- **Learning**: Custom domain setup can take 1-2 hours for DNS/SSL provisioning
+- **Tip**: Use Railway subdomain during development and testing
+- **Process**: Requires both DNS CNAME configuration and Railway SSL certificate provisioning
+
+**Multi-Domain OAuth**: As mentioned above, implemented automatic domain detection for OAuth flows.
+
+### 🔧 Development Workflow Improvements
+
+**Frontend Build Process**:
+- **Challenge**: Ensuring frontend build files are always deployed
+- **Solution**: Integrated build verification in deployment scripts and proper Git tracking
+
+**Environment Variable Management**:
+- **Best Practice**: Use Railway's environment variable system for all sensitive configuration
+- **Security**: Never commit credentials or API keys to version control
+
+**Database Migrations**:
+- **Learning**: Always run migrations in production deployment
+- **Implementation**: Automated migration execution in deployment scripts
+
+### 📊 API Design Patterns
+
+**Health Data Aggregation**:
+- **Challenge**: Efficiently querying and aggregating time-series health data
+- **Solution**: Implemented summary endpoints with configurable date ranges and data type filtering
+
+**OAuth State Management**:
+- **Security**: Proper CSRF protection with OAuth state parameters
+- **Error Handling**: Clear error messages for authentication failures
+
+### 🐛 Debugging Techniques
+
+**Railway Deployment Logs**:
+- **Tip**: Use Railway's deployment logs extensively for debugging
+- **Pattern**: Add detailed logging for OAuth flows, database connections, and static file serving
+
+**Local vs Production Parity**:
+- **Challenge**: Differences between local development and Railway deployment
+- **Solution**: Implement environment-aware configuration and logging
+
+### 📈 Performance Optimizations
+
+**Database Queries**:
+- **Learning**: Efficient indexing and query optimization for health data time series
+- **Implementation**: Proper database schema design with appropriate indexes
+
+**Static Asset Delivery**:
+- **Challenge**: Reliable static file serving in production
+- **Solution**: Flask's static file handling with proper cache headers
+
+### 🔒 Security Considerations
+
+**OAuth Implementation**:
+- **Best Practice**: Always validate redirect URIs match exactly
+- **Security**: Use HTTPS for all OAuth flows in production
+- **State Protection**: Implement proper OAuth state parameter validation
+
+**File Upload Security**:
+- **Validation**: Implement file type and size validation for blood test uploads
+- **Storage**: Secure file storage with proper permissions
+
+### 🎯 Production Readiness Checklist
+
+Based on our deployment experience:
+
+- [x] Environment variable configuration
+- [x] Database migration automation
+- [x] Static file serving verification
+- [x] OAuth callback URL configuration
+- [x] HTTPS enforcement
+- [x] Error logging and monitoring
+- [x] Health check endpoints
+- [x] Proper CORS configuration
+
 ## Support
 
 For issues or questions:
 - Open an issue on GitHub
 - Check the troubleshooting section
 - Review API documentation
+- Refer to the "Key Technical Insights" section for common deployment issues
 
 ---
 
