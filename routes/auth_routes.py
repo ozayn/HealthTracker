@@ -23,7 +23,10 @@ def google_login():
         if not hasattr(current_app.oauth, 'google'):
             return jsonify({'error': 'Google OAuth client not registered. Please restart the server.'}), 500
 
-        redirect_uri = url_for('auth.google_authorize', _external=True)
+        # Use the configured redirect URI instead of generating dynamically
+        redirect_uri = current_app.config.get('GOOGLE_REDIRECT_URI')
+        if not redirect_uri:
+            return jsonify({'error': 'GOOGLE_REDIRECT_URI not configured in environment variables'}), 500
         return current_app.oauth.google.authorize_redirect(redirect_uri)
     except Exception as e:
         return jsonify({'error': f'Google OAuth setup error: {str(e)}. Please check your Google OAuth credentials.'}), 500
