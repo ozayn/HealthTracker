@@ -8,7 +8,15 @@ from config import Config
 from models import db, User
 
 def create_app():
-    app = Flask(__name__, static_folder='frontend/build')
+    # Configure static folder for Railway deployment
+    static_dir = 'frontend/build'
+    if not os.path.exists(static_dir):
+        # Try relative to current directory
+        static_dir = os.path.join(os.path.dirname(__file__), 'frontend', 'build')
+
+    app = Flask(__name__, static_folder=static_dir)
+    print(f"Static folder configured: {app.static_folder}")
+    print(f"Static folder exists: {os.path.exists(app.static_folder)}")
     app.config.from_object(Config)
 
     # Enable CORS with credentials support
@@ -72,6 +80,7 @@ def create_app():
             abort(404)
 
         if path and os.path.exists(os.path.join(app.static_folder, path)):
+            print(f"Serving static file: {path}")
             return send_from_directory(app.static_folder, path)
         return send_from_directory(app.static_folder, 'index.html')
     
