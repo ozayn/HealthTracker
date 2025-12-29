@@ -63,6 +63,7 @@ def create_app():
             name='google',
             client_id=app.config['GOOGLE_CLIENT_ID'],
             client_secret=app.config['GOOGLE_CLIENT_SECRET'],
+            redirect_uri=app.config.get('GOOGLE_REDIRECT_URI'),
             authorize_url='https://accounts.google.com/o/oauth2/auth',
             authorize_params=None,
             access_token_url='https://oauth2.googleapis.com/token',
