@@ -81,12 +81,17 @@ def create_app():
             from flask import abort
             abort(404)
 
-        if path and os.path.exists(os.path.join(app.static_folder, path)):
-            print(f"Serving static file: {path} from {app.static_folder}")
-            return send_from_directory(app.static_folder, path)
-        else:
-            print(f"Static file not found: {path} in {app.static_folder}")
-            print(f"Static folder contents: {os.listdir(app.static_folder) if os.path.exists(app.static_folder) else 'Folder does not exist'}")
+        # Check static files first
+        if path and path.startswith('static/'):
+            static_path = os.path.join(app.static_folder, path)
+            if os.path.exists(static_path):
+                print(f"Serving static file: {path}")
+                return send_from_directory(app.static_folder, path)
+            else:
+                print(f"Static file not found: {path} (looked in {static_path})")
+                return f"Static file not found: {path}", 404
+
+        # For all other routes, serve index.html (SPA routing)
         return send_from_directory(app.static_folder, 'index.html')
     
     # Health check endpoint
