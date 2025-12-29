@@ -394,6 +394,9 @@ def import_clue_from_drive():
         # Process each file
         for file_info in files:
             if file_info['name'].endswith(('.csv', '.json')):
+                folder_path = getattr(file_info, 'folder_path', 'Clue folder')
+                print(f"Processing file: {file_info['name']} from {folder_path}")
+
                 df = google_drive_service.download_and_parse_clue_file(
                     drive_service, file_info['id'], file_info['name']
                 )
@@ -409,6 +412,16 @@ def import_clue_from_drive():
                     imported_data['symptoms'] += len(parsed_data['symptoms'])
                     imported_data['moods'] += len(parsed_data['moods'])
                     imported_data['files_processed'] += 1
+
+                    # Track folder information
+                    if folder_path not in imported_data:
+                        imported_data[folder_path] = {'files': 0, 'records': 0}
+                    imported_data[folder_path]['files'] += 1
+                    imported_data[folder_path]['records'] += (
+                        len(parsed_data['cycles']) +
+                        len(parsed_data['symptoms']) +
+                        len(parsed_data['moods'])
+                    )
 
         google_drive_integration.last_sync = datetime.utcnow()
         db.session.commit()

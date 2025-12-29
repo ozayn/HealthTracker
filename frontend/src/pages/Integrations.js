@@ -167,7 +167,7 @@ function Integrations({ user }) {
                 {provider.name === 'fitbit' && 'Track steps, heart rate, sleep, and activities'}
                 {provider.name === 'oura' && 'Track sleep quality, readiness, and activity'}
                 {provider.name === 'clue' && 'Track menstrual cycle and reproductive health'}
-                {provider.name === 'google_drive' && 'Import Clue data from Google Drive (HealthTrackerData/Apps/Clue)'}
+                {provider.name === 'google_drive' && 'Import Clue data from Google Drive (supports ClueDataDownload folders)'}
               </div>
 
               <div className="provider-actions">

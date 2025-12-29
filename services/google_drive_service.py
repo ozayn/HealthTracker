@@ -170,7 +170,43 @@ class GoogleDriveService:
             return False
 
     def list_clue_files(self, service, folder_id):
-        """List all files in the Clue folder"""
+        """List all files in the Clue folder and subfolders"""
+        all_files = []
+
+        try:
+            # Get all items in the Clue folder (files and subfolders)
+            results = service.files().list(
+                q=f"'{folder_id}' in parents and trashed=false",
+                spaces='drive',
+                fields='files(id, name, mimeType, modifiedTime)',
+                orderBy='modifiedTime desc'
+            ).execute()
+
+            items = results.get('files', [])
+
+            for item in items:
+                if item['mimeType'] == 'application/vnd.google-apps.folder':
+                    # This is a subfolder (like ClueDataDownload-2024-01-15)
+                    print(f"Found subfolder: {item['name']}")
+                    # Recursively get files from this subfolder
+                    subfolder_files = self._list_files_recursive(service, item['id'])
+                    all_files.extend(subfolder_files)
+                else:
+                    # This is a file
+                    all_files.append(item)
+
+            return all_files
+        except Exception as e:
+            print(f"Error listing Clue files: {str(e)}")
+            return []
+
+    def _list_files_recursive(self, service, folder_id, max_depth=3, current_depth=0):
+        """Recursively list files in a folder (to handle nested ClueDataDownload folders)"""
+        files = []
+
+        if current_depth >= max_depth:
+            return files
+
         try:
             results = service.files().list(
                 q=f"'{folder_id}' in parents and trashed=false",
@@ -179,10 +215,43 @@ class GoogleDriveService:
                 orderBy='modifiedTime desc'
             ).execute()
 
-            return results.get('files', [])
+            items = results.get('files', [])
+
+            for item in items:
+                if item['mimeType'] == 'application/vnd.google-apps.folder':
+                    # Recursively search subfolders
+                    subfolder_files = self._list_files_recursive(service, item['id'], max_depth, current_depth + 1)
+                    files.extend(subfolder_files)
+                else:
+                    # This is a file - add folder path to filename for context
+                    item['folder_path'] = self._get_folder_path(service, folder_id)
+                    files.append(item)
+
+            return files
         except Exception as e:
-            print(f"Error listing Clue files: {str(e)}")
-            return []
+            print(f"Error in recursive file listing: {str(e)}")
+            return files
+
+    def _get_folder_path(self, service, folder_id):
+        """Get the full path of a folder for context"""
+        try:
+            folder = service.files().get(fileId=folder_id, fields='name,parents').execute()
+            path_parts = [folder['name']]
+
+            # Walk up the hierarchy to build full path
+            current_id = folder.get('parents', [None])[0]
+            while current_id:
+                try:
+                    parent = service.files().get(fileId=current_id, fields='name,parents').execute()
+                    path_parts.insert(0, parent['name'])
+                    current_id = parent.get('parents', [None])[0]
+                except:
+                    break
+
+            return '/'.join(path_parts)
+        except Exception as e:
+            print(f"Error getting folder path: {str(e)}")
+            return "Unknown"
 
     def download_and_parse_clue_file(self, service, file_id, filename):
         """Download and parse a Clue data file"""
