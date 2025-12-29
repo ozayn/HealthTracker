@@ -30,6 +30,10 @@ class Config:
 
     CLUE_CLIENT_ID = os.getenv('CLUE_CLIENT_ID')
     CLUE_CLIENT_SECRET = os.getenv('CLUE_CLIENT_SECRET')
+
+    GOOGLE_DRIVE_CLIENT_ID = os.getenv('GOOGLE_DRIVE_CLIENT_ID')
+    GOOGLE_DRIVE_CLIENT_SECRET = os.getenv('GOOGLE_DRIVE_CLIENT_SECRET')
+    GOOGLE_DRIVE_REDIRECT_URI = os.getenv('GOOGLE_DRIVE_REDIRECT_URI', 'http://localhost:5007/api/auth/google-drive/callback')
     CLUE_REDIRECT_URI = os.getenv('CLUE_REDIRECT_URI', 'http://localhost:5007/api/auth/clue/callback')
 
     # User access control

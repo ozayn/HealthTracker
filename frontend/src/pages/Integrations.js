@@ -10,7 +10,8 @@ function Integrations({ user }) {
   const providers = [
     { name: 'fitbit', displayName: 'Fitbit', icon: 'F', color: '#00b0b9' },
     { name: 'oura', displayName: 'Oura Ring', icon: 'O', color: '#6772e5' },
-    { name: 'clue', displayName: 'Clue', icon: 'C', color: '#ff5c8d' }
+    { name: 'clue', displayName: 'Clue', icon: 'C', color: '#ff5c8d' },
+    { name: 'google_drive', displayName: 'Google Drive (Clue Data)', icon: 'G', color: '#4285f4' }
   ];
 
   useEffect(() => {
@@ -61,6 +62,20 @@ function Integrations({ user }) {
     } catch (error) {
       console.error('Error disconnecting integration:', error);
       alert('Failed to disconnect integration');
+    }
+  };
+
+  const handleImportClueData = async () => {
+    try {
+      const response = await apiFetch('/api/clue/import-drive', {
+        method: 'POST'
+      });
+      const data = await response.json();
+      alert(`Clue data imported successfully!\n${JSON.stringify(data.data, null, 2)}`);
+      // Optionally reload integrations or update UI
+    } catch (error) {
+      console.error('Error importing Clue data:', error);
+      alert('Failed to import Clue data. Make sure Google Drive is connected.');
     }
   };
 
@@ -152,19 +167,30 @@ function Integrations({ user }) {
                 {provider.name === 'fitbit' && 'Track steps, heart rate, sleep, and activities'}
                 {provider.name === 'oura' && 'Track sleep quality, readiness, and activity'}
                 {provider.name === 'clue' && 'Track menstrual cycle and reproductive health'}
+                {provider.name === 'google_drive' && 'Import Clue data from Google Drive (HealthTrackerData/Apps/Clue)'}
               </div>
 
               <div className="provider-actions">
                 {isConnected ? (
-                  <button 
-                    className="btn btn-danger" 
-                    onClick={() => handleDisconnect(integration.id)}
-                  >
-                    Disconnect
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => handleDisconnect(integration.id)}
+                    >
+                      Disconnect
+                    </button>
+                    {provider.name === 'clue' && integrations.some(i => i.provider === 'google_drive' && i.is_active) && (
+                      <button
+                        className="btn btn-success"
+                        onClick={handleImportClueData}
+                      >
+                        Import from Drive
+                      </button>
+                    )}
+                  </div>
                 ) : (
-                  <button 
-                    className="btn btn-primary" 
+                  <button
+                    className="btn btn-primary"
                     onClick={() => handleConnect(provider.name)}
                   >
                     Connect

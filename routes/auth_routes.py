@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from services.fitbit_service import FitbitService
 from services.oura_service import OuraService
 from services.clue_service import ClueService
+from services.google_drive_service import GoogleDriveService
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -302,4 +303,122 @@ def disconnect_integration(integration_id):
     integration.is_active = False
     db.session.commit()
     return jsonify({'message': 'Integration disconnected successfully'})
+
+# Google Drive Integration for Clue Data Import
+@auth_bp.route('/google-drive/authorize', methods=['GET'])
+@login_required
+def google_drive_authorize():
+    """Initiate Google Drive OAuth flow for Clue data import"""
+    user_id = current_user.id
+
+    google_drive_service = GoogleDriveService()
+    auth_url = google_drive_service.get_authorization_url(user_id)
+
+    if not auth_url:
+        return jsonify({'error': 'Google Drive integration not configured. Please check GOOGLE_DRIVE_CLIENT_ID and GOOGLE_DRIVE_CLIENT_SECRET.'}), 500
+
+    return jsonify({'authorization_url': auth_url})
+
+@auth_bp.route('/google-drive/callback', methods=['GET'])
+@login_required
+def google_drive_callback():
+    """Handle Google Drive OAuth callback"""
+    code = request.args.get('code')
+    state = request.args.get('state')
+
+    if not code:
+        return jsonify({'error': 'Authorization code not provided'}), 400
+
+    user = current_user
+
+    try:
+        google_drive_service = GoogleDriveService()
+        tokens = google_drive_service.exchange_code_for_token(code)
+
+        # Save Google Drive integration
+        integration = Integration(
+            user_id=user.id,
+            provider='google_drive',
+            access_token=tokens['access_token'],
+            refresh_token=tokens.get('refresh_token'),
+            token_expires_at=datetime.utcnow() + timedelta(seconds=3600),  # 1 hour default
+            is_active=True
+        )
+        db.session.add(integration)
+        db.session.commit()
+
+        return redirect('/dashboard?integration=google_drive&status=success')
+
+    except Exception as e:
+        print(f"Google Drive OAuth error: {str(e)}")
+        return redirect('/dashboard?integration=google_drive&status=error')
+
+@auth_bp.route('/clue/import-drive', methods=['POST'])
+@login_required
+def import_clue_from_drive():
+    """Import Clue data from Google Drive"""
+    user = current_user
+
+    # Get Google Drive integration
+    google_drive_integration = Integration.query.filter_by(
+        user_id=user.id,
+        provider='google_drive',
+        is_active=True
+    ).first()
+
+    if not google_drive_integration:
+        return jsonify({'error': 'Google Drive not connected. Please connect Google Drive first.'}), 400
+
+    try:
+        google_drive_service = GoogleDriveService()
+        drive_service = google_drive_service.get_drive_service(
+            google_drive_integration.access_token,
+            google_drive_integration.refresh_token
+        )
+
+        # Find Clue folder
+        clue_folder_id = google_drive_service.find_clue_folder(drive_service)
+        if not clue_folder_id:
+            return jsonify({'error': 'Could not find HealthTrackerData/Apps/Clue folder in Google Drive'}), 404
+
+        # List files in Clue folder
+        files = google_drive_service.list_clue_files(drive_service, clue_folder_id)
+
+        imported_data = {
+            'cycles': 0,
+            'symptoms': 0,
+            'moods': 0,
+            'files_processed': 0
+        }
+
+        # Process each file
+        for file_info in files:
+            if file_info['name'].endswith(('.csv', '.json')):
+                df = google_drive_service.download_and_parse_clue_file(
+                    drive_service, file_info['id'], file_info['name']
+                )
+
+                if df is not None:
+                    parsed_data = google_drive_service.parse_clue_cycle_data(df)
+
+                    # Save to database using ClueService
+                    clue_service = ClueService()
+                    clue_service._save_parsed_data(user.id, parsed_data)
+
+                    imported_data['cycles'] += len(parsed_data['cycles'])
+                    imported_data['symptoms'] += len(parsed_data['symptoms'])
+                    imported_data['moods'] += len(parsed_data['moods'])
+                    imported_data['files_processed'] += 1
+
+        google_drive_integration.last_sync = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Clue data imported successfully from Google Drive',
+            'data': imported_data
+        })
+
+    except Exception as e:
+        print(f"Error importing Clue data from Google Drive: {str(e)}")
+        return jsonify({'error': f'Failed to import Clue data: {str(e)}'}), 500
 

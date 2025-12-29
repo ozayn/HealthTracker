@@ -144,3 +144,26 @@ class ClueService:
         
         db.session.commit()
 
+    def _save_parsed_data(self, user_id, parsed_data):
+        """Save parsed Clue data to database"""
+        try:
+            # Save cycles
+            for cycle in parsed_data['cycles']:
+                date = cycle['date']
+                if 'cycle_day' in cycle:
+                    self._save_health_data(user_id, 'cycle_day', date, cycle['cycle_day'], 'day')
+                if 'is_period' in cycle:
+                    self._save_health_data(user_id, 'period', date, 1, 'boolean')
+
+            # Save symptoms
+            for symptom in parsed_data['symptoms']:
+                self._save_health_data(user_id, f'symptom_{symptom["symptom"]}', symptom['date'], 1, 'boolean')
+
+            # Save moods
+            for mood in parsed_data['moods']:
+                self._save_health_data(user_id, 'mood', mood['date'], mood['mood'], 'score')
+
+        except Exception as e:
+            print(f"Error saving parsed Clue data: {str(e)}")
+
+    
