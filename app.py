@@ -17,6 +17,8 @@ def create_app():
     app = Flask(__name__, static_folder=static_dir)
     print(f"Static folder configured: {app.static_folder}")
     print(f"Static folder exists: {os.path.exists(app.static_folder)}")
+    if os.path.exists(app.static_folder):
+        print(f"Static folder contents: {os.listdir(app.static_folder)}")
     app.config.from_object(Config)
 
     # Enable CORS with credentials support
@@ -80,8 +82,11 @@ def create_app():
             abort(404)
 
         if path and os.path.exists(os.path.join(app.static_folder, path)):
-            print(f"Serving static file: {path}")
+            print(f"Serving static file: {path} from {app.static_folder}")
             return send_from_directory(app.static_folder, path)
+        else:
+            print(f"Static file not found: {path} in {app.static_folder}")
+            print(f"Static folder contents: {os.listdir(app.static_folder) if os.path.exists(app.static_folder) else 'Folder does not exist'}")
         return send_from_directory(app.static_folder, 'index.html')
     
     # Health check endpoint
