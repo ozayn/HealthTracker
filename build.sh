@@ -28,5 +28,11 @@ fi
 chmod +x sync_scheduler.py
 echo "✅ Sync scheduler configured!"
 
+# List the static files to verify they're present
+echo "📁 Frontend build contents:"
+ls -la frontend/build/
+echo "📁 Static files:"
+ls -la frontend/build/static/js/ 2>/dev/null || echo "No JS files found"
+
 echo "✅ Frontend build verified!"
 echo "✅ Build process complete!"
