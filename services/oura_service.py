@@ -12,17 +12,20 @@ class OuraService:
     DEFAULT_SYNC_DAYS = 30  # How far back to sync initially
     RECENT_SYNC_HOURS = 24  # How recent data to sync for ongoing updates
     
-    def get_authorization_url(self, user_id):
+    def get_authorization_url(self, user_id, redirect_uri=None):
         """Generate Oura OAuth authorization URL"""
         from flask import current_app
+        if not redirect_uri:
+            redirect_uri = current_app.config['OURA_REDIRECT_URI']
+
         params = {
             'response_type': 'code',
             'client_id': current_app.config['OURA_CLIENT_ID'],
-            'redirect_uri': current_app.config['OURA_REDIRECT_URI'],
+            'redirect_uri': redirect_uri,
             'scope': 'daily',
             'state': str(user_id)
         }
-        
+
         query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
         return f"{self.AUTH_URL}?{query_string}"
     

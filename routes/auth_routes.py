@@ -23,10 +23,22 @@ def google_login():
         if not hasattr(current_app.oauth, 'google'):
             return jsonify({'error': 'Google OAuth client not registered. Please restart the server.'}), 500
 
-        # Use the configured redirect URI instead of generating dynamically
-        redirect_uri = current_app.config.get('GOOGLE_REDIRECT_URI')
+        # Dynamically determine redirect URI based on request origin
+        base_url = request.host_url.rstrip('/')
+        if 'railway.app' in base_url:
+            # Railway subdomain
+            redirect_uri = 'https://web-production-3e53e.up.railway.app/api/auth/google/callback'
+        elif 'healthtracker.ozayn.com' in base_url:
+            # Custom domain
+            redirect_uri = 'https://healthtracker.ozayn.com/api/auth/google/callback'
+        else:
+            # Fallback to configured URI
+            redirect_uri = current_app.config.get('GOOGLE_REDIRECT_URI')
+
         if not redirect_uri:
-            return jsonify({'error': 'GOOGLE_REDIRECT_URI not configured in environment variables'}), 500
+            return jsonify({'error': 'Could not determine redirect URI'}), 500
+
+        print(f"OAuth redirect URI: {redirect_uri} (from {base_url})")
         return current_app.oauth.google.authorize_redirect(redirect_uri)
     except Exception as e:
         return jsonify({'error': f'Google OAuth setup error: {str(e)}. Please check your Google OAuth credentials.'}), 500
@@ -161,10 +173,23 @@ def fitbit_callback():
 def oura_authorize():
     """Initiate Oura OAuth flow"""
     user_id = current_user.id
-    
+
+    # Dynamically determine redirect URI based on request origin
+    base_url = request.host_url.rstrip('/')
+    if 'railway.app' in base_url:
+        # Railway subdomain
+        redirect_uri = 'https://web-production-3e53e.up.railway.app/api/auth/oura/callback'
+    elif 'healthtracker.ozayn.com' in base_url:
+        # Custom domain
+        redirect_uri = 'https://healthtracker.ozayn.com/api/auth/oura/callback'
+    else:
+        # Fallback to configured URI
+        redirect_uri = current_app.config.get('OURA_REDIRECT_URI')
+
     oura_service = OuraService()
-    auth_url = oura_service.get_authorization_url(user_id)
-    
+    auth_url = oura_service.get_authorization_url(user_id, redirect_uri)
+
+    print(f"Oura OAuth redirect URI: {redirect_uri} (from {base_url})")
     return jsonify({'authorization_url': auth_url})
 
 @auth_bp.route('/oura/callback', methods=['GET'])
