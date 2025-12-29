@@ -37,9 +37,18 @@ function Integrations({ user }) {
     try {
       const response = await apiFetch(`/api/auth/${provider}/authorize?user_id=${user.id}`);
       const data = await response.json();
-      
+
       if (data.authorization_url) {
-        window.location.href = data.authorization_url;
+        // Special handling for Clue -> Google Drive redirect
+        if (provider === 'clue' && data.provider === 'google_drive') {
+          if (confirm(`${data.message}\n\nContinue to Google Drive authentication?`)) {
+            window.location.href = data.authorization_url;
+          }
+        } else {
+          window.location.href = data.authorization_url;
+        }
+      } else if (data.error) {
+        alert(`Error: ${data.error}`);
       } else {
         alert(`${provider} integration is not yet available. Please configure the API credentials.`);
       }

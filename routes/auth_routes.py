@@ -236,13 +236,29 @@ def oura_callback():
 @auth_bp.route('/clue/authorize', methods=['GET'])
 @login_required
 def clue_authorize():
-    """Initiate Clue OAuth flow"""
+    """Initiate Clue OAuth flow (redirects to Google Drive for data import)"""
     user_id = current_user.id
-    
+
+    # Check if Clue API is available (placeholder for future)
     clue_service = ClueService()
     auth_url = clue_service.get_authorization_url(user_id)
-    
-    return jsonify({'authorization_url': auth_url})
+
+    # If Clue API is available, use it
+    if auth_url:
+        return jsonify({'authorization_url': auth_url})
+
+    # Otherwise, redirect to Google Drive OAuth for data import
+    google_drive_service = GoogleDriveService()
+    google_drive_auth_url = google_drive_service.get_authorization_url(user_id)
+
+    if google_drive_auth_url:
+        return jsonify({
+            'authorization_url': google_drive_auth_url,
+            'provider': 'google_drive',
+            'message': 'Clue API not available. Connecting Google Drive to import Clue data.'
+        })
+    else:
+        return jsonify({'error': 'Neither Clue API nor Google Drive integration is configured.'}), 500
 
 @auth_bp.route('/clue/callback', methods=['GET'])
 @login_required
@@ -336,7 +352,7 @@ def google_drive_callback():
         tokens = google_drive_service.exchange_code_for_token(code)
 
         # Save Google Drive integration
-        integration = Integration(
+        google_drive_integration = Integration(
             user_id=user.id,
             provider='google_drive',
             access_token=tokens['access_token'],
@@ -344,14 +360,34 @@ def google_drive_callback():
             token_expires_at=datetime.utcnow() + timedelta(seconds=3600),  # 1 hour default
             is_active=True
         )
-        db.session.add(integration)
+        db.session.add(google_drive_integration)
+
+        # Check if this is for Clue data import (when user clicked Clue connect)
+        # Also create a Clue integration record to show it's "connected"
+        clue_integration = Integration.query.filter_by(
+            user_id=user.id,
+            provider='clue'
+        ).first()
+
+        if not clue_integration:
+            # Create Clue integration record (placeholder for actual Clue API)
+            clue_integration = Integration(
+                user_id=user.id,
+                provider='clue',
+                access_token=None,  # No real Clue API token yet
+                refresh_token=None,
+                token_expires_at=None,
+                is_active=True  # Mark as active since Google Drive is connected
+            )
+            db.session.add(clue_integration)
+
         db.session.commit()
 
-        return redirect('/dashboard?integration=google_drive&status=success')
+        return redirect('/dashboard?integration=clue&status=success&google_drive_connected=true')
 
     except Exception as e:
         print(f"Google Drive OAuth error: {str(e)}")
-        return redirect('/dashboard?integration=google_drive&status=error')
+        return redirect('/dashboard?integration=clue&status=error')
 
 @auth_bp.route('/clue/import-drive', methods=['POST'])
 @login_required
