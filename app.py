@@ -8,17 +8,34 @@ from config import Config
 from models import db, User
 
 def create_app():
-    # Configure static folder for Railway deployment
-    static_dir = 'frontend/build'
-    if not os.path.exists(static_dir):
-        # Try relative to current directory
-        static_dir = os.path.join(os.path.dirname(__file__), 'frontend', 'build')
+    # Configure static folder for different deployment environments
+    current_dir = os.path.dirname(__file__)
+    possible_static_dirs = [
+        'frontend/build',  # Relative to cwd (Railway)
+        os.path.join(current_dir, 'frontend', 'build'),  # Relative to app.py
+        '/app/frontend/build',  # Absolute path in Railway
+        os.path.join(os.getcwd(), 'frontend', 'build'),  # Current working directory
+    ]
+
+    static_dir = None
+    for path in possible_static_dirs:
+        if os.path.exists(path) and os.path.isdir(path):
+            static_dir = path
+            break
+
+    if not static_dir:
+        print("WARNING: No static directory found!")
+        static_dir = 'frontend/build'  # Fallback
 
     app = Flask(__name__, static_folder=static_dir)
     print(f"Static folder configured: {app.static_folder}")
     print(f"Static folder exists: {os.path.exists(app.static_folder)}")
     if os.path.exists(app.static_folder):
-        print(f"Static folder contents: {os.listdir(app.static_folder)}")
+        try:
+            contents = os.listdir(app.static_folder)
+            print(f"Static folder contents: {contents[:5]}...")  # Show first 5 items
+        except Exception as e:
+            print(f"Error reading static folder: {e}")
     app.config.from_object(Config)
 
     # Enable CORS with credentials support
@@ -84,17 +101,17 @@ def create_app():
         # Check static files first
         if path and path.startswith('static/'):
             static_path = os.path.join(app.static_folder, path)
+            print(f"Static request: {path}")
             print(f"Static folder: {app.static_folder}")
-            print(f"Requested path: {path}")
-            print(f"Full static path: {static_path}")
-            print(f"Static folder exists: {os.path.exists(app.static_folder)}")
-            if os.path.exists(app.static_folder):
-                print(f"Static folder contents: {os.listdir(app.static_folder)}")
+            print(f"Full path: {static_path}")
+            print(f"File exists: {os.path.exists(static_path)}")
+
             if os.path.exists(static_path):
-                print(f"Serving static file: {path}")
+                print(f"✅ Serving static file: {path}")
                 return send_from_directory(app.static_folder, path)
             else:
-                print(f"Static file not found: {path}")
+                print(f"❌ Static file not found: {path}")
+                print(f"Available in static folder: {os.listdir(app.static_folder) if os.path.exists(app.static_folder) else 'N/A'}")
                 return f"Static file not found: {path}", 404
 
         # For all other routes, serve index.html (SPA routing)
