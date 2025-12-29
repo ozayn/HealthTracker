@@ -162,6 +162,8 @@ if __name__ == '__main__':
         print("Database tables created")
 
     port = int(os.getenv('PORT', 5007))
+    print(f"Starting Flask app on port {port}")
+    print(f"PORT environment variable: {os.getenv('PORT')}")
     # Run in production-like mode (no auto-restart on file changes)
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 

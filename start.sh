@@ -23,5 +23,6 @@ with app.app_context():
 # Start the application
 PORT=${PORT:-8080}
 echo "🌐 Starting Gunicorn server on port $PORT..."
+echo "PORT environment variable: $PORT"
 echo "Using gunicorn command: gunicorn --chdir . app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 30"
 exec gunicorn --chdir . app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 30
